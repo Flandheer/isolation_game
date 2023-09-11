@@ -1,12 +1,12 @@
 # TODO: implement the __init__ class below by adding properties
 # that meet the three requirements specified
 import random
+import copy
 
 
-class GameState:
-    # TODO: The board game now navigates in indices 0,0 ... 6,6 but for human player the interface should be A1,B2, etc.
+class GameBoard:
 
-    def __init__(self, y_length, x_length, player_1, player_2):
+    def __init__(self, x_length, y_length, player_1, player_2):
         """The GameState class constructor performs required
         initializations when an instance is created. The class
         should:
@@ -28,27 +28,16 @@ class GameState:
 
         # Create a board with the same size as the game board
         # and fill it with False values
-        self._board = [[False for _ in range(y_length)] for _ in range(x_length)]
-        self._player_1 = player_1
-        self.position_player_1 = None
-        self._player_2 = player_2
-        self.position_player_2 = None
-        self.last_move = None
+        self._board_width = x_length
+        self._board_height = y_length
+        self._board = [[False for _ in range(x_length)] for _ in range(y_length)]
+        self.positions = {player_1: None, player_2: None}
         self.game_over = False
-        self._active_player = random.choice([self._player_1, self._player_2])
+        self.player_1 = player_1
+        self.player_2 = player_2
+        self.active_player = random.choice([self.player_1, self.player_2])
 
-        '''
-        Parity: In the context of game theory and artificial intelligence, "parity" refers to a property 
-        of certain games that determines whether a player has a winning strategy or not. A game is said to have parity 
-        if the outcome of the game is determined solely by the number of moves played, rather than the specific 
-        moves themselves. In a game with parity, the player who makes the last move wins if the total number of moves 
-        played is odd, and loses if the total number of moves played is even. This means that the player who moves last 
-        has an advantage in a game with parity. Parity is an important concept in game theory because it helps determine
-        the optimal strategy for a player. By analyzing the parity of a game, we can determine whether a player can 
-        force a win or a draw, or if the outcome is uncertain.
-        '''
-
-    def has_initiative(self):
+    def change_initiative(self):
         """
         Monitors the player that has initiative. There're three phases:
         1) Game hasn't started yet. The board selects who get's to play first. That's done in the constructor
@@ -63,33 +52,20 @@ class GameState:
          If _active_player is 0, it will become 1, and if _active_player is 1, it will become 0.
         """
 
-        if not self.last_move:
-            return self._active_player
-
-        elif self.last_move == self._player_1:
-            return self._player_2
-
-        else:
-            return self._player_1
-
-
-
-    def get_all_moves(self):
-        """
-        Function to retrieve all possible positions on the board
-        Returns: List with all possible positions
-        """
-        return [[x, y] for y in range(len(self._board)) for x in range(len(self._board[0]))]
+        if self.active_player == self.player_1:
+            self.active_player = self.player_2
+        elif self.active_player == self.player_2:
+            self.active_player = self.player_1
 
     def get_all_blanc(self):
         """
         Function to retrieve all blanc spaces on the board
         Returns: List with all possible positions
         """
-        return [[x, y] for y in range(len(self._board)) for x in range(len(self._board[0]))
-                if self._board[y][x] is False]
+        return [[x, y] for x in range(len(self._board[0])) for y in range(len(self._board)) if
+                self._board[y][x] is False]
 
-    def get_legal_moves(self, position):
+    def get_legal_moves(self, position=None):
         """
         Function to retrieve diagonal moves from a two-dimensional playing board, base ob the position of the player
         Args:
@@ -97,37 +73,47 @@ class GameState:
 
         Returns: all the possible diagonal moves from the position of the player
         """
-        # Length of the board
-        board_length = len(self._board)
-        # width of the board
-        board_width = len(self._board[0])
+        if not position:
+            return self.get_all_blanc()
+        # width of the board, the first line in [line_1:[F,F,F,F], line_2[F,F,F,F]] is the length (4) of the first line
+        x_length = len(self._board[0])
+
+        # Length of the board are the  lines in [line_1:[F,F,F,F], line_2[F,F,F,F]] (2)
+        y_length = len(self._board)
+
         # Retrieve the diagonal moves
         legal_moves = []
         # The directions in which the player can move
-        directions = [[1, 1], [-1, 1],      # Diagonal  left bottom -> right top
-                      [1, -1], [-1, -1],    # Diagonal  left top  -> right bottom
-                      [0, 1], [0, -1],      # Horizontal
-                      [1, 0], [-1, 0]]      # Vertical
+        directions = [[1, -1], [-1, 1],  # Diagonal left top  -> right bottom
+                      [1, 1], [-1, -1],  # Diagonal left bottom -> right top
+                      [0, 1], [0, -1],  # Horizontal
+                      [1, 0], [-1, 0]]  # Vertical
 
         for direction in directions:
-            # Current position is starting point for new position
+            # Current position is starting point for new  position, which is [y,x]
             new_position = position
 
             # Check if the new position is within the board and not already occupied
-            hit_occupied = False
-
-            while 0 < new_position[0] < board_width and 0 < new_position[1] < board_length and hit_occupied is False:
+            proceed = True
+            while proceed:
                 # Go through the lines and check if a field is blocked. if not, add it to diagonal moves
                 new_position = [new_position[0] + direction[0], new_position[1] + direction[1]]
-                if self._board[new_position[0]][new_position[1]] is False:
-                    legal_moves.append(new_position)
-                else:
+                # Smaller than, because the board starts at 0 and the lengths are 1 higher
+                if not 0 <= new_position[0] < y_length or not 0 <= new_position[1] < x_length:
+                    proceed = False
+
+                elif self._board[new_position[0]][new_position[1]] is True:
                     # This would mean the iteration hit an occupied cell, no further moves in this direction
-                    hit_occupied = True
+                    proceed = False
+                else:
+                    legal_moves.append(new_position)
+
+        if len(legal_moves) == 0:
+            self.game_over = True
 
         return legal_moves
 
-    def make_move(self):
+    def make_move(self, move):
         """
         Offers the player the opportunity to make a move. The player is the one that has initiative. The moves is
         restricted. The player only is able to make moves in diagonal, horizontal or vertical lines and can't jump
@@ -139,76 +125,313 @@ class GameState:
         if the player can't make any legal move, the game is over.
         """
 
-        # retrieve position of the player. I can improve to say self._active_player.position
-        if self._active_player == self._player_1:
-            position = self.position_player_1
+        legal_moves = self.get_legal_moves(self.positions[self.active_player])
+
+        # Make a move on the board at coordinates (x, y)
+        if move not in legal_moves:
+            return False  # Invalid move
+
+        y = move[0]
+        x = move[1]
+
+        self._board[y][x] = True
+        self.positions[self.active_player] = move
+        self.change_initiative()
+        # self.active_player.player_possible_moves = self.get_legal_moves(self.positions[self.active_player])
+
+        # Import to return the board, because the computer player needs to know the board for the iterative deepening
+        return self
+
+    def terminal_test(self):
+        """
+        Game over if no legal moves are left is managed in get_legal_moves. And checked after every move. If player one
+        has made the move, it will check if player two has any move left after the move of player one.
+        !!! This doesn't account for the fact that player two can block himself and last move player one isn't necessary
+        Returns: True if the game is over, otherwise False
+        """
+
+        return len(self.get_legal_moves(self.positions[self.active_player])) == 0
+
+    def utility(self):
+        """
+        The game stop when the active player has no legal moves left. That means that the active player loses.
+        If player one has no legal moves, he loses and the score will be -inf. If player two has no legal moves, player
+        one wins and the score will be inf.
+        Returns: 1 if the player wins, -1 if the player loses, 0 if it's a draw
+        """
+
+        # The game stops when the active
+        if self.active_player == self.player_1:
+            return float("-inf")
+        elif self.active_player == self.player_2:
+            return float("inf")
         else:
-            position = self.position_player_2
+            return 0
 
-        if self.position_player_1 is None and self.position_player_2 is None:
-            possible_moves = self.get_all_moves()
-        else:
-            # retrieve the possible moves of the player
-            possible_moves = self.get_legal_moves(position)
+    def clone(self):
+        """
+        Creates a copy of the current board
+        :return:
+        """
 
-        if not possible_moves:
-            self.game_over = True
-            return "Game over"
+        cloned_board = GameBoard(self._board_width, self._board_height,
+                                 self.player_1, self.player_2)
+        cloned_board._board = [row[:] for row in self._board]  # Create a deep copy of the board
+        cloned_board.game_over = self.game_over
+        cloned_board.positions = self.positions.copy()
+        cloned_board.active_player = cloned_board.player_1 if self.active_player == self.player_1 else cloned_board.player_2
+        cloned_board.player_1 = self.player_1  # Clone player 1
+        cloned_board.player_2 = self.player_2  # Clone player 2
 
-        give_up = False
-        while give_up is False:
-            print(f"Please make a move. You can move to the following positions: {possible_moves}")
-            move = input()
-            move = [int(x) for x in move.split(",")]  # perhaps make moves A1, A2, etc?
+        return cloned_board
 
-            # Check if the move is valid
-            if move in possible_moves:
-                # Update the board
-                self._board[move[0]][move[1]] = True
+    def __str__(self):
+        """
+        Display the current game board with row and column labels.
+        """
+        x_length = len(self._board[0])
+        y_length = len(self._board)
 
-                # Update the position of the player
-                if self._active_player == self._player_1:
-                    self.position_player_1 = move
-                else:
-                    self.position_player_2 = move
+        # Column labels (characters A, B, C, ...)
+        column_labels = "    " + "   ".join(chr(65 + i) for i in range(x_length))
 
-                # Update the last move
-                self.last_move = move
+        # Create the board representation with row labels and symbols for open and occupied cells
+        board_repr = []
+        for y in range(y_length):
+            row_label = str(y + 1).rjust(2)  # Row labels (numbers 1, 2, 3, ...)
+            row = [row_label] + [" T " if self._board[y][x] else " F " for x in range(x_length)]
+            board_repr.append(" ".join(row))
 
-                # Update the active player
-                self._active_player = self.has_initiative()
-                return move
+        '''
+        if self._position_player_1:
+            board_repr[self._position_player_1[0]] = board_repr[self._position_player_1[0]].replace(" O ", " 1 ")
+        if self._position_player_2:
+            board_repr[self._position_player_2[0]] = board_repr[self._position_player_2[0]].replace(" O ", " 2 ")
+        '''
 
+        # Combine the column labels and board representation
+        board_display = column_labels + "\n" + "\n".join(board_repr)
+
+        return board_display
+
+
+class Player:
+
+    def __init__(self, player_name, player_type):
+        """
+        Constructor for the player class
+        Args:
+            player_name: Name of the player
+            player_type: Type of the player (Human or Computer)
+        """
+        self.player_name = player_name
+
+        # Check if the player_type is valid (either "Human" or "Computer")
+        if player_type not in ["Human", "Computer"]:
+            raise ValueError("Invalid player_type. Must be 'Human' or 'Computer'.")
+
+        self.player_type = player_type
+        self.player_position = None
+        self.player_possible_moves = []
+
+    def __str__(self):
+        """
+        Returns a string representation of the player
+        :return:
+        """
+        return self.player_name + " (" + self.player_type + ")"
+
+
+class HumanPlayer(Player):
+    """ A human player in a game """
+
+    def __init__(self, player_name):
+        """
+        Constructor for the HumanPlayer class
+        Args:
+            player_name: Name of the player
+        """
+        super().__init__(player_name, "Human")
+
+    def human_decision(self, current_state):
+        """
+        This function asks the user to input a move. The move is checked if it is valid. If not, the user is asked to
+        input a new move. Converts a move string to a zero-based index for a game board.
+
+        Parameters:
+        move (str): A move string in the format "A1" where the first character represents a column (letter) on the board,
+                    and the second character represents a row (number).
+        Returns:
+        int: A zero-based index corresponding to the column specified in the move.
+
+        Example:
+        - For move "A1," convert_move_to_index("A1") returns 0, indicating that "A" maps to column index 0.
+        - For move "B2," convert_move_to_index("B2") returns 1, indicating that "B" maps to column index 1.
+        :param current_state: The current state of the game
+        :return: The move the user has chosen
+        """
+
+        # The user has no move yet
+        print(f"player position = {current_state.positions[current_state.active_player]}")
+        legal_moves = current_state.get_legal_moves(current_state.positions[current_state.active_player])
+
+        # The user is asked to input a move
+        move_input = input("Please enter a move (e.g. 'A1'): ")
+
+        # The move is converted to a list of coordinates
+        move = [int(move_input[1]) - 1, ord(move_input[0].upper()) - 65]
+
+        print(f'{move_input} -> {move}')
+        print(f"These are the legal moves: {legal_moves}")
+        if move not in legal_moves:
+            print("Invalid move. Please try again.")
+            move = self.human_decision(current_state)
+
+        return move
+
+
+class ComputerPlayer(Player):
+    """This subclass of Player representing an AI player. In this class different algortihms are worked out such as
+        minimax algorithm with alpha-beta pruning and a depth limited search algorithm."""
+
+    def __init__(self, player_name):
+        """
+        Constructor for the ComputerPlayer class.
+        Args:
+            player_name: Name of the player
+        """
+        super().__init__(player_name, "Computer")
+
+    def minimax_decision(self, current_state):
+        """
+        The gamestate given is a copy of the current gamestate. This function initiates the minimax algorithm with
+
+        This function initiates the minimax algorithm with alpha-beta pruning and returns the best move the player can
+        make.
+        :return:
+        """
+
+        # the computer player has no move yet
+        best_move = None
+        # The computer player wants to maximize its score, so the best score is set to -inf,
+        # you only can go up from the position score
+        best_score = float("-inf")
+
+        print(f"player active = {current_state.active_player}")
+        print(f"player position = {current_state.positions[current_state.active_player]}")
+        legal_moves = current_state.get_legal_moves(current_state.positions[current_state.active_player])
+        print(f"These are the legal moves: {legal_moves}")
+
+        # Because the next step is to maximize the score, the computer player will start with the max_value function
+        # The max_value function will return the best move and the best score
+        for move in current_state.get_legal_moves(current_state.positions[current_state.active_player]):
+            new_state = current_state.clone()
+            new_value = self.min_value(new_state.make_move(move))
+            if new_value > best_score:
+                best_score = new_value
+                best_move = move
+
+        return best_move
+
+    def min_value(self, state):
+        """
+        Isolation is a player turn based game. The computer player assumes the human player wants to win, aka the
+        computer player to lose. Isolation game is a zerosum game, so in order to let the computer lose, the player will
+        choose an move that has lowest effect on progressing the computers game. A move that leads to -inf for the
+        computer will lead to a win for the player. Therefor the computer will assume the player will choose that move.
+        :return:
+        """
+
+        if state.terminal_test():
+            return state.utility()
+
+        legal_moves = state.get_legal_moves(state.positions[state.active_player])
+        value = float("inf")
+
+        # Play out the moves from the new position
+        for move in state.get_legal_moves(state.positions[state.active_player]):
+            # change the state of the board by making a move. Copy the board state to prevent changing the original
+            new_state = state.clone()
+            new_value = self.max_value(new_state.make_move(move))
+            # Based on the result of the played move, the human player will choose for min result for the computer
+            value = min(value, new_value)
+
+        return value
+
+    def max_value(self, state):
+        """
+        The computer player will choose the move that will lead to the highest score for the computer.
+        :return:
+        """
+
+        # check if the game is over. If human wins, return -inf, if computer wins, return inf
+        if state.terminal_test():
+            return state.utility()
+
+        value = float("-inf")
+
+        # Play out the moves from the new position
+        for move in state.get_legal_moves(state.positions[state.active_player]):
+            # The move will force the human player to make the next move
+            new_state = state.clone()
+            new_value = self.min_value(new_state.make_move(move))
+            # Based on the result of the played move, the computer player will choose for max result
+            value = max(value, new_value)
+
+        return value
+
+
+class GameManager:
+
+    def __init__(self):
+        """
+        Constructor for the GameManager class.
+        """
+        self.game = None
+
+    def create_game(self):
+        """
+        Creates a game. Creates a computer player, asks for a human player and initiates the gameBoard,
+            game_type: The type of game to be created.
+        """
+        # The computer player is created
+        computer_player = ComputerPlayer("Computer")
+        human_player = HumanPlayer("Jantje")
+
+        # The game type is asked
+        game_type = input("Please enter the board size: small (2,3), medium (5,5) or standard (6,8)")
+        # The game is created
+        self.game = GameBoard(2, 3, human_player, computer_player)
+
+    def play_game(self):
+        """
+        This function plays the game. The game is played until the game is over. The game is over when the terminal
+        test is true, meaning a player has no more move left.
+        :return:
+        """
+
+        # The game is played until the game is over
+        while not self.game.terminal_test():
+            # The game board is printed
+            print(f"\n --- A new round ---\n{self.game}")
+
+            # The current human player is asked to make a move
+            if self.game.active_player.player_type == "Human":
+                print(f"Your turn player: {self.game.active_player.player_name}!")
+                move = self.game.active_player.human_decision(self.game)
+            # A move is generated by the computer player
             else:
-                print("Invalid move, would you like to give up? (y/n)")
-                give_it_up = input()
-                if give_it_up == "y":
-                    give_up = True
+                print("Computer's turn!")
+                move = self.game.active_player.minimax_decision(self.game)
 
-        self.game_over = True
-        return "Game over"
+            # The move is made
+            print(f"The move is processed in the board")
+            self.game.make_move(move)
 
-    def print_board(self):
-        """
-        Print the board with the current position of the players and the fields that are already occupied:
-        X: Player 1
-        O: Player 2
-        #: Occupied field
-         : Empty field
-        The board should look like this:
-          1 2 3 4 5
-        1 # #
-        2 # X
-        3
-        4       O
-        5       # #
-        """
-
-        pass
+        print("Game over!")
 
 
 if __name__ == "__main__":
-    # This code is only executed if "gameagent.py" is the run
-    # as a script (i.e., it is not run if "gameagent.py" is
-    # imported as a module)
-    emptyState = GameState()  # create an instance of the object
+    game_manager = GameManager()
+    game_manager.create_game()
+    game_manager.play_game()
