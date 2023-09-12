@@ -302,7 +302,27 @@ class ComputerPlayer(Player):
         """
         super().__init__(player_name, "Computer")
 
-    def minimax_decision(self, current_state):
+    def my_moves(self, state):
+        my_available_moves = state.get_legal_moves(state.positions[state.active_player])
+
+        return len(my_available_moves)
+
+    def get_actions(self, state, min_depth):
+        """
+        Function to get actions from the minimax_decision function to perform iterative deepening search. It will go
+        through a for loop to get the best move for each depth. The best move will be returned.
+        :param min_depth: The minimum depth the algorithm should search
+        :param state:
+        :return:
+        """
+
+        best_move_for_depth = None
+        for d in range(1, min_depth + 1):
+            best_move_for_depth = self.minimax_decision(state, d)
+
+        return best_move_for_depth
+
+    def minimax_decision(self, current_state, depth=float("inf")):
         """
         The gamestate given is a copy of the current gamestate. This function initiates the minimax algorithm with
 
@@ -326,14 +346,15 @@ class ComputerPlayer(Player):
         # The max_value function will return the best move and the best score
         for move in current_state.get_legal_moves(current_state.positions[current_state.active_player]):
             new_state = current_state.clone()
-            new_value = self.min_value(new_state.make_move(move))
+            new_value = self.min_value(new_state.make_move(move), depth - 1)
             if new_value > best_score:
                 best_score = new_value
+                print(f"best score = {best_score}")
                 best_move = move
 
         return best_move
 
-    def min_value(self, state):
+    def min_value(self, state, depth):
         """
         Isolation is a player turn based game. The computer player assumes the human player wants to win, aka the
         computer player to lose. Isolation game is a zerosum game, so in order to let the computer lose, the player will
@@ -345,20 +366,24 @@ class ComputerPlayer(Player):
         if state.terminal_test():
             return state.utility()
 
-        legal_moves = state.get_legal_moves(state.positions[state.active_player])
+        print(f"Depth = {depth}")
+        if depth <= 0:
+            return self.my_moves(state)
+            # return 0
+
         value = float("inf")
 
         # Play out the moves from the new position
         for move in state.get_legal_moves(state.positions[state.active_player]):
             # change the state of the board by making a move. Copy the board state to prevent changing the original
             new_state = state.clone()
-            new_value = self.max_value(new_state.make_move(move))
+            new_value = self.max_value(new_state.make_move(move), depth - 1)
             # Based on the result of the played move, the human player will choose for min result for the computer
             value = min(value, new_value)
 
         return value
 
-    def max_value(self, state):
+    def max_value(self, state, depth):
         """
         The computer player will choose the move that will lead to the highest score for the computer.
         :return:
@@ -368,13 +393,17 @@ class ComputerPlayer(Player):
         if state.terminal_test():
             return state.utility()
 
+        if depth <= 0:
+            return self.my_moves(state)
+            # return 0
+
         value = float("-inf")
 
         # Play out the moves from the new position
         for move in state.get_legal_moves(state.positions[state.active_player]):
             # The move will force the human player to make the next move
             new_state = state.clone()
-            new_value = self.min_value(new_state.make_move(move))
+            new_value = self.min_value(new_state.make_move(move), depth - 1)
             # Based on the result of the played move, the computer player will choose for max result
             value = max(value, new_value)
 
@@ -432,6 +461,4 @@ class GameManager:
 
 
 if __name__ == "__main__":
-    game_manager = GameManager()
-    game_manager.create_game()
-    game_manager.play_game()
+    print(f"What is : {float('inf') - 1}")

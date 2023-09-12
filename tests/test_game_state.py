@@ -111,6 +111,27 @@ class TestGameState(unittest.TestCase):
         print(move)
         self.assertEqual(move, [1, 2])
 
+    def test_computer_depth_move(self):
+        """ Test if the computer makes a move"""
+
+        computer_player1 = ComputerPlayer("HAL2000")
+        human_player2 = HumanPlayer("Frank")
+
+        self.game_state = GameBoard(5, 5, computer_player1, human_player2)
+        self.game_state.active_player = computer_player1
+        self.game_state.positions[self.game_state.player_1] = [2, 3]
+        self.game_state.positions[self.game_state.player_2] = [4, 1]
+        occupied_positions = [[1, 0], [2, 1], [1, 1], [0, 1]]
+        for position in occupied_positions:
+            y = position[0]
+            x = position[1]
+            self.game_state._board[y][x] = True
+
+        move = computer_player1.minimax_decision(self.game_state, depth=2)
+        print(move)
+        self.assertEqual(move, [3, 2])
+
+
     def test_game_play(self):
         """
         Run the game to check if the game plays out correctly. Should be a short game (<10 moves) where I check if
