@@ -409,6 +409,81 @@ class ComputerPlayer(Player):
 
         return value
 
+    def alpha_beta_search(self, current_state):
+        """
+        This function initiates the alpha beta pruning search algorithm. The algorithm will start the execution of
+        a tree search where for every layer, the alpha or beta value will be found and the other branches will be pruned
+        Different from minimax, also because the algorithm start with the max_value function.
+        :param current_state:
+        :return:
+        """
+
+        # the computer player has no move yet
+        best_move = None
+        # The computer player wants to maximize its score, so the best score is set to -inf,
+        # you only can go up from the position score
+        best_score = float("-inf")
+        alpha = float("-inf")
+        beta = float("inf")
+
+        for move in current_state.get_legal_moves(current_state.positions[current_state.active_player]):
+            new_state = current_state.clone()
+            new_value = self.max_value_alpha_beta(new_state.make_move(move), alpha, beta)
+            # alpha = max(alpha, new_value) -> I think this would lead to initiate min_value instead of max_value
+            if new_value > best_score:
+                best_score = new_value
+                best_move = move
+
+        return best_move
+
+    def max_value_alpha_beta(self, state, alpha, beta):
+        """
+        alpha at every state in the game tree α represents the guaranteed worst-case score that the MAX player could
+        achieve.  If the estimate of the upper bound is ever lower than the estimate of the lower bound in any state,
+        then the search can be cut off because there are no values between the upper and lower bounds.
+        :param state:
+        :param alpha:
+        :param beta:
+        :return:
+        """
+
+        if state.terminal_test():
+            return state.utility()
+
+        value = float("-inf")
+
+        for move in state.get_legal_moves(state.positions[state.active_player]):
+            new_state = state.clone()
+            value = max(value, self.min_value_alpha_beta(new_state.make_move(move), alpha, beta))
+            if value >= beta:
+                return value
+            alpha = max(alpha, value)
+
+        return value
+
+    def min_value_alpha_beta(self, state, alpha, beta):
+        """
+        beta at every state in the game tree β represents the guaranteed worst-case score that the MIN player could
+        achieve.  If the estimate of the lower bound is ever greater than the estimate of the upper bound in any state,
+        then the search can be cut off because there are no values between the upper and lower bounds.
+        :param state:
+        :param alpha:
+        :param beta:
+        :return:
+        """
+
+        if state.terminal_test():
+            return state.utility()
+
+        value = float("inf")
+
+        for move in state.get_legal_moves(state.positions[state.active_player]):
+            new_state = state.clone()
+            value = min(value, self.max_value_alpha_beta(new_state.make_move(move), alpha, beta))
+            if value <= alpha:
+                return value
+            beta = min(beta, value)
+
 
 class GameManager:
 
